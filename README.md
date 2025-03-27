@@ -1,0 +1,1 @@
+# qa-device-manager

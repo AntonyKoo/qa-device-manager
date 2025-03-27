@@ -1,0 +1,24 @@
+# Python 가상환경
+venv/
+env/
+bin/
+lib/
+pyvenv.cfg
+
+# Python 캐시
+__pycache__/
+*.pyc
+*.pyo
+
+# 환경 파일
+.env
+
+# IDE 관련
+.idea/
+.vscode/
+
+# macOS
+.DS_Store
+
+# 로그
+*.log

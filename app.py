@@ -84,7 +84,7 @@ HTML_TEMPLATE = """
     <h2>테스트폰 대여/반납</h2>
     <div class="device"><strong>Device Name:</strong> {{ device }}</div>
     <form method="POST">
-        <select name="user" id="user-select" onchange="updateActionButton()">
+        <select name="user" id="user-select" onchange="updateActionButton() oninput="updateActionButton()">
             <option selected disabled hidden>사용자</option>
             {% for u in users %}
             <option value="{{ u }}">{{ users_with_status[u] }}</option>
@@ -98,7 +98,7 @@ HTML_TEMPLATE = """
         const renter = "{{ current_renter }}";
 
         function updateActionButton() {
-            const selectedUser = document.getElementById("user-select").value;
+            const selectedUser = document.getElementById("user-select").value.trim();
             const btn = document.getElementById("action-button");
 
             if (selectedUser === renter) {

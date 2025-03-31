@@ -23,7 +23,7 @@ def load_state():
     except FileNotFoundError:
         device_status = {}
 
-users = sorted(os.getenv("USERS", "").split(","))
+users = sorted([u.strip() for u in os.getenv("USERS", "").split(",")])
 SLACK_WEBHOOK = os.getenv("SLACK_WEBHOOK")
 
 HTML_TEMPLATE = """
@@ -35,33 +35,19 @@ HTML_TEMPLATE = """
     <title>11+ 테스트 폰 대여 시스템</title>
     <style>
         body {
-            margin: 0; padding: 0;
             background-color: #000;
             font-family: 'Helvetica Neue', sans-serif;
             color: #fff;
-            display: flex; flex-direction: column;
-            align-items: center;
-            justify-content: start;
-            min-height: 100vh;
-            padding-top: 40px;
-        }
-        .logo {
-            width: 120px; margin-bottom: 30px;
-        }
-        h2 {
-            font-size: 22px; margin-bottom: 20px;
-        }
-        .device {
-            font-size: 16px;
-            margin-top: 60px;
-            margin-bottom: 20px;
-            color: #00ff91;
-        }
-        form {
             display: flex;
             flex-direction: column;
             align-items: center;
+            padding-top: 40px;
+            min-height: 100vh;
         }
+        .logo { width: 120px; margin-bottom: 30px; }
+        h2 { font-size: 22px; margin-bottom: 20px; }
+        .device { color: #00ff91; font-size: 16px; margin: 60px 0 20px 0; }
+        form { display: flex; flex-direction: column; align-items: center; }
         select, button {
             font-size: 16px;
             padding: 12px;
@@ -70,76 +56,61 @@ HTML_TEMPLATE = """
             margin-bottom: 20px;
             width: 240px;
         }
-        select {
-            background-color: #222; color: #fff;
-        }
-        button {
-            background-color: #00ff91;
-            color: #000; font-weight: bold;
-        }
+        select { background-color: #222; color: #fff; }
+        button { background-color: #00ff91; color: #000; font-weight: bold; }
     </style>
 </head>
 <body>
     <img src="/static/11+logo.png" alt="11+ 로고" class="logo">
     <h2>테스트폰 대여/반납</h2>
     <div class="device"><strong>Device Name:</strong> {{ device }}</div>
-    <form method="POST">
-        <select name="user" id="user-select" onchange="updateActionButton() oninput="updateActionButton()">
-            <option selected disabled hidden>사용자</option>
+
+    <!-- 사용자 선택 (GET) -->
+    <form method="GET">
+        <input type="hidden" name="device" value="{{ device }}">
+        <select name="user" onchange="this.form.submit()">
+            <option disabled {% if not selected_user %}selected{% endif %}>사용자</option>
             {% for u in users %}
-            <option value="{{ u }}">{{ users_with_status[u] }}</option>
+            <option value="{{ u }}" {% if u == selected_user %}selected{% endif %}>{{ users_with_status[u] }}</option>
             {% endfor %}
         </select>
-        <button type="submit" id="action-button">대여하기</button>
     </form>
 
-    <script>
-        const device = "{{ device }}";
-        const renter = "{{ current_renter }}";
+    <!-- 대여/반납 버튼 (POST) -->
+    {% if selected_user %}
+    <form method="POST">
+        <input type="hidden" name="user" value="{{ selected_user }}">
+        <input type="hidden" name="device" value="{{ device }}">
+        <button type="submit">{{ action }}하기</button>
+    </form>
+    {% endif %}
 
-        function updateActionButton() {
-            const selectedUser = document.getElementById("user-select").value.trim();
-            const btn = document.getElementById("action-button");
-
-            if (selectedUser === renter) {
-                btn.innerText = "반납하기";
-            } else {
-                btn.innerText = "대여하기";
-            }
-        }
-
-        {% if alert_message %}
-        alert("{{ alert_message }}");
-        {% endif %}
-    </script>
+    {% if alert_message %}
+    <script>alert("{{ alert_message }}");</script>
+    {% endif %}
 </body>
 </html>
 """
 
 @app.route("/rent", methods=["GET", "POST"])
 def rent():
-    device = request.args.get("device")
+    device = request.values.get("device")
     if not device:
         return "기기명이 누락되었습니다."
 
     alert_message = None
     current_renter = device_status.get(device)
+    selected_user = request.values.get("user", "")
 
     if request.method == "POST":
         user = request.form.get("user", "")
 
-        # 1. 사용자 선택 안 함
-        if user == "" or user == "사용자":
+        if user == "":
             alert_message = "사용자를 선택해주세요!"
-
-        # 2. 대여 시: 이미 다른 기기 대여 중
         elif device not in device_status and user in device_status.values():
             alert_message = "이미 다른 기기를 대여 중입니다!"
-
-        # 3. 반납 시: 선택한 사용자가 대여자가 아님
-        elif device in device_status and current_renter != user:
-            alert_message = f"{device}은(는) {current_renter}님이 대여 중입니다. {user}님은 반납할 수 없습니다!"
-
+        elif device in device_status and device_status[device] != user:
+            alert_message = f"{device}은(는) {device_status[device]}님이 대여 중입니다. {user}님은 반납할 수 없습니다!"
         else:
             today = datetime.now().strftime("%Y/%m/%d")
             is_renting = device not in device_status
@@ -150,33 +121,33 @@ def rent():
                 message = f"✅ [{device}] 대여됨 – 사용자: {user} – {today}"
                 alert_message = f"{user}님이 {device}을 대여했습니다!"
             else:
-                prev_user = device_status.get(device, user)
-                message = f"🔁 [{device}] 반납됨 – 사용자: {prev_user} – {today}"
+                message = f"🔁 [{device}] 반납됨 – 사용자: {user} – {today}"
                 device_status.pop(device, None)
                 save_state()
-                alert_message = f"{prev_user}님이 {device}을 반납했습니다!"
+                alert_message = f"{user}님이 {device}을 반납했습니다!"
 
             requests.post(SLACK_WEBHOOK, json={"text": message})
 
-    # 사용자 표시 이름 구성: "홍길동 - i1 대여중"
+    # 사용자 상태 표시: "이름 - i1 대여중"
     users_with_status = {}
     for u in users:
-        device_rented = None
+        rented = None
         for d, renter in device_status.items():
             if renter == u:
-                device_rented = d
+                rented = d
                 break
-        users_with_status[u] = f"{u} - {device_rented} 대여중" if device_rented else u
+        users_with_status[u] = f"{u} - {rented} 대여중" if rented else u
 
-    action = "대여" if device not in device_status else "반납"
+    action = "반납" if selected_user and selected_user == current_renter else "대여"
 
     return render_template_string(
         HTML_TEMPLATE,
         device=device,
         users=users,
+        selected_user=selected_user,
         users_with_status=users_with_status,
-        action=action,
         current_renter=current_renter,
+        action=action,
         alert_message=alert_message
     )
 

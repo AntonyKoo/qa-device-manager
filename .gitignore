@@ -31,3 +31,4 @@ device_status.json
 
 # QR 생성코드 > 불필요
 generate_qr.py
+*.png

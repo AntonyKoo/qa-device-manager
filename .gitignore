@@ -22,3 +22,9 @@ __pycache__/
 
 # 로그
 *.log
+
+# 로고 아이콘
+static/11+logo.png
+
+# 디바이스 상태 관리 json file
+device_status.json

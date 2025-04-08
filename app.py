@@ -103,40 +103,60 @@ def rent():
     selected_user = request.values.get("user", "")
 
     if request.method == "POST":
+        print("🔥 POST 요청 들어옴!")
         user = request.form.get("user", "")
+        print(f"📥 POST로 들어온 user={user}, device={device}")
 
         if user == "":
             alert_message = "사용자를 선택해주세요!"
-        elif device not in device_status and user in device_status.values():
-            alert_message = "이미 다른 기기를 대여 중입니다!"
-        elif device in device_status and device_status[device] != user:
-            alert_message = f"{device}은(는) {device_status[device]}님이 대여 중입니다. {user}님은 반납할 수 없습니다!"
         else:
-            today = datetime.now().strftime("%Y/%m/%d")
+            current_holder = device_status.get(device)
+            user_devices = [d for d, renter in device_status.items() if renter == user]
             is_renting = device not in device_status
 
-            if is_renting:
-                device_status[device] = user
-                save_state()
-                message = f"✅ [{device}] 대여됨 – 사용자: {user} – {today}"
-                alert_message = f"{user}님이 {device}을 대여했습니다!"
-            else:
-                message = f"🔁 [{device}] 반납됨 – 사용자: {user} – {today}"
-                device_status.pop(device, None)
-                save_state()
-                alert_message = f"{user}님이 {device}을 반납했습니다!"
+            # 반납 시도인데 본인이 아닌 경우
+            if not is_renting and current_holder != user:
+                alert_message = f"{device}은(는) {current_holder}님이 대여 중입니다. {user}님은 반납할 수 없습니다!"
 
-            requests.post(SLACK_WEBHOOK, json={"text": message})
+            # 대여 시도
+            elif is_renting:
+                # 일반 사용자: 이미 다른 기기 대여 중이면 차단
+                if user != "이동현" and user in device_status.values():
+                    alert_message = "이미 다른 기기를 대여 중입니다!"
+
+                # 이동현: 총 2대 초과하면 차단
+                elif user == "이동현":
+                    if len(user_devices) >= 2:
+                        alert_message = "이동현님은 a2 외 1대만 추가 대여할 수 있습니다!"
+
+            # 대여 또는 반납 실행
+            if not alert_message:
+                today = datetime.now().strftime("%Y/%m/%d")
+                if is_renting:
+                    device_status[device] = user
+                    message = f"✅ [{device}] 대여됨 – 사용자: {user} – {today}"
+                    alert_message = f"{user}님이 {device}을 대여했습니다!"
+                else:
+                    device_status.pop(device, None)
+                    message = f"🔁 [{device}] 반납됨 – 사용자: {user} – {today}"
+                    alert_message = f"{user}님이 {device}을 반납했습니다!"
+
+                save_state()
+
+                try:
+                    requests.post(SLACK_WEBHOOK, json={"text": message})
+                except Exception as e:
+                    print("Slack 전송 오류:", e)
 
     # 사용자 상태 표시: "이름 - i1 대여중"
     users_with_status = {}
     for u in users:
-        rented = None
-        for d, renter in device_status.items():
-            if renter == u:
-                rented = d
-                break
-        users_with_status[u] = f"{u} - {rented} 대여중" if rented else u
+        rented_devices = [d for d, renter in device_status.items() if renter == u]
+        if rented_devices:
+            device_str = ", ".join(rented_devices)
+            users_with_status[u] = f"{u} - {device_str} 대여중"
+        else:
+            users_with_status[u] = u
 
     action = "반납" if selected_user and selected_user == current_renter else "대여"
 

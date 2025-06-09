@@ -6,6 +6,7 @@ from utils.ip_monitor import check_ip_and_generate
 import os
 import json
 from flask import render_template
+from utils.qr_generator import generate_qr_images, get_local_ip
 
 load_dotenv()
 app = Flask(__name__)
@@ -181,7 +182,5 @@ def show_qrs():
 
 if __name__ == "__main__":
     load_state()
-    from utils.qr_generator import generate_qr_images
-    generate_qr_images(devices, "192.168.0.12")  # ← 로컬 테스트용 강제 생성
     check_ip_and_generate(devices)
     app.run(host="0.0.0.0", port=5000, debug=True)

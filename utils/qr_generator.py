@@ -23,6 +23,6 @@ def generate_qr_images(devices, ip):
         draw = ImageDraw.Draw(new_img)
         bbox = draw.textbbox((0, 0), device, font=font)
         text_x = (qr_img.width - (bbox[2] - bbox[0])) // 2
-        draw.text((text_x, qr_img.height + 5), device, font=font, fill="black")
+        # draw.text((text_x, qr_img.height + 5), device, font=font, fill="black")
 
         new_img.save(os.path.join(QR_DIR, f"{device}.png"))

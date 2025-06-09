@@ -2,6 +2,7 @@ from flask import Flask, request, render_template_string
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
+from utils.ip_monitor import check_ip_and_generate
 import os
 import json
 
@@ -24,6 +25,7 @@ def load_state():
         device_status = {}
 
 users = sorted([u.strip() for u in os.getenv("USERS", "").split(",")])
+devices = sorted([d.strip() for d in os.getenv("DEVICES", "").split(",")])
 SLACK_WEBHOOK = os.getenv("SLACK_WEBHOOK")
 
 HTML_TEMPLATE = """
@@ -171,6 +173,66 @@ def rent():
         alert_message=alert_message
     )
 
+@app.route("/qrs")
+def show_qrs():
+    return render_template_string("""
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <title>📱 테스트 디바이스 QR 코드</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                text-align: center;
+                padding: 40px;
+            }
+            h2 {
+                margin-bottom: 40px;
+            }
+            .qr-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);  /* 🔥 2열 고정 */
+                gap: 40px 60px;
+                justify-items: center;
+                max-width: 500px;
+                margin: 0 auto;
+            }
+            .qr-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            .qr-item img {
+                width: 200px;
+                height: 200px;
+                object-fit: contain;
+            }
+            .qr-item span {
+                margin-top: 10px;
+                font-weight: bold;
+                font-size: 16px;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>📱 테스트 디바이스 QR 코드</h2>
+        <div class="qr-grid">
+            {% for device in devices %}
+            <div class="qr-item">
+                <img src="{{ url_for('static', filename='qr_codes/' + device + '.png') }}" alt="{{ device }}">
+                <span>{{ device }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </body>
+    </html>
+    """, devices=devices)
+
+
 if __name__ == "__main__":
     load_state()
+    from utils.qr_generator import generate_qr_images
+    generate_qr_images(devices, "192.168.0.12")  # ← 로컬 테스트용 강제 생성
+    check_ip_and_generate(devices)
     app.run(host="0.0.0.0", port=5000, debug=True)

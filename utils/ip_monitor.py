@@ -2,7 +2,6 @@ import os
 import socket
 import requests
 from dotenv import load_dotenv
-from utils.qr_generator import generate_qr_images
 
 load_dotenv()
 
@@ -14,7 +13,6 @@ def get_local_ip():
     """현재 내부망에서 사용할 수 있는 로컬 IP 반환"""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        # 인터넷 연결된 외부 IP를 흉내 내기 위한 가상 연결
         s.connect(("8.8.8.8", 80))
         return s.getsockname()[0]
     finally:
@@ -33,9 +31,11 @@ def save_current_ip(ip):
 
 
 def notify_slack(ip):
-    """QR 리스트 페이지를 포함한 Slack 알림 전송"""
-    msg = f"""⚠️ 서버 IP가 변경되었습니다: `{ip}`
-📎 새로운 QR 코드 보러가기 👉 http://{ip}:5000/qrs"""
+    """Slack으로 새로운 접속 링크 알림 (Markdown 스타일)"""
+    msg = (
+        "📡 *로컬 IP가 변경되었습니다!*\n\n"
+        f"📎 [대여 시스템 접속하기](http://{ip}:5000/qrs)"
+    )
     try:
         requests.post(SLACK_WEBHOOK, json={"text": msg})
         print("✅ Slack 전송 완료")
@@ -43,8 +43,8 @@ def notify_slack(ip):
         print("❌ Slack 전송 실패:", e)
 
 
-def check_ip_and_generate(devices):
-    """IP 변경 여부 확인 후 QR 생성 및 Slack 알림"""
+def check_and_notify_ip():
+    """IP 변경 여부 확인 후 Slack 알림만 전송"""
     current_ip = get_local_ip()
     if not current_ip:
         print("❌ 내부 IP 확인 실패")
@@ -54,7 +54,6 @@ def check_ip_and_generate(devices):
     if current_ip != last_ip:
         print(f"🔄 IP 변경 감지: {last_ip} → {current_ip}")
         save_current_ip(current_ip)
-        generate_qr_images(devices, current_ip)
         notify_slack(current_ip)
     else:
-        print("✅ IP 변경 없음. QR 생성 생략.")
+        print("✅ IP 변경 없음")

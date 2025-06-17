@@ -1,51 +1,125 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>📱 테스트 디바이스 QR 코드</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            text-align: center;
-            padding: 40px;
-        }
-        h2 {
-            margin-bottom: 40px;
-        }
-        .qr-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);  /* 🔥 2열 고정 */
-            gap: 40px 60px;
-            justify-items: center;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-        .qr-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .qr-item img {
-            width: 200px;
-            height: 200px;
-            object-fit: contain;
-        }
-        .qr-item span {
-            margin-top: 10px;
-            font-weight: bold;
-            font-size: 32px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>11+ 테스트폰 선택</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: 'Helvetica Neue', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px;
+      min-height: 100vh;
+    }
+
+    .logo {
+      width: 120px;
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      font-size: 20px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .device-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+      gap: 16px 16px;
+      max-width: 360px;
+      width: 100%;
+      margin: 0 auto;
+      justify-content: center;
+    }
+
+    .device-button {
+      background-color: #00ff91;
+      color: #000;
+      border: none;
+      border-radius: 14px;
+      aspect-ratio: 3 / 4;
+      font-size: 16px;
+      font-weight: bold;
+      text-align: center;
+      transition: background-color 0.3s ease;
+      cursor: pointer;
+      width: 100%;
+      max-height: 180px;
+      box-shadow: 0 4px 10px rgba(0, 255, 145, 0.25);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 8px;
+    }
+
+    .device-button.inactive {
+      background-color: #666;
+      color: #ccc;
+    }
+
+    .device-name {
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+
+    .device-status {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+
+    form {
+      margin: 0;
+    }
+
+    .footer {
+      margin-top: 40px;
+      font-size: 13px;
+      color: #aaa;
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      .device-grid {
+        gap: 16px;
+      }
+      .device-button {
+        font-size: 15px;
+        max-width: 120px;
+        max-height: 160px;
+      }
+    }
+  </style>
 </head>
 <body>
-    <h2>📱 테스트 디바이스 QR 코드</h2>
-    <div class="qr-grid">
-        {% for device in devices %}
-        <div class="qr-item">
-            <img src="{{ url_for('static', filename='qr_codes/' + device + '.png') }}" alt="{{ device }}">
-            <span>{{ device }}</span>
-        </div>
-        {% endfor %}
-    </div>
+  <img src="/static/11+logo.png" alt="11+ 로고" class="logo" />
+  <h2>기기를 선택해 대여 또는 반납을 시작하세요</h2>
+
+  <div class="device-grid">
+    {% for device in devices %}
+    {% set is_rented = device in device_status %}
+    {% set renter = device_status.get(device, "") %}
+    <form action="/rent" method="get">
+      <input type="hidden" name="device" value="{{ device }}">
+      <button type="submit" class="device-button {% if is_rented %}inactive{% endif %}">
+        <div class="device-name">{{ device }}</div>
+        {% if is_rented %}
+        <div class="device-status">{{ renter }} 대여중</div>
+        {% else %}
+        <div class="device-status">대여 가능</div>
+        {% endif %}
+      </button>
+    </form>
+    {% endfor %}
+  </div>
+
+  <div class="footer">
+    ※ 사무실 내부 Wi-Fi(CAN Lab_5G) 연결 시에만 이용 가능합니다.
+  </div>
 </body>
 </html>

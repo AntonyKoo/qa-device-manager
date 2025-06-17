@@ -2,7 +2,7 @@ from flask import Flask, request, render_template_string
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
-from utils.ip_monitor import check_ip_and_generate
+from utils.ip_monitor import check_and_notify_ip
 import os
 import json
 from flask import render_template
@@ -177,10 +177,10 @@ def rent():
 
 @app.route("/qrs")
 def show_qrs():
-    return render_template("qrs.html", devices=devices)
+    return render_template("qrs.html", devices=devices, device_status=device_status)
 
 
 if __name__ == "__main__":
     load_state()
-    check_ip_and_generate(devices)
+    check_and_notify_ip()
     app.run(host="0.0.0.0", port=5000, debug=True)
